@@ -2,9 +2,24 @@ export interface Env {
     NUXT_TURNSTILE_SECRET_KEY: string
 }
 
+export interface MessageBody {
+    first_name: string
+    middle_name: string
+    last_name: string
+    message_email: string
+    message_subject: string
+    message: string
+}
+
+//TODO HANDLE SENDGRID FUNCTION TO SEND AND RECEIVE SENDGRID WORKER DATA
+async function handleSendgrid(request: Request) {
+    const body : MessageBody = JSON.parse(JSON.stringify(await request.json()))
+    return new Response()
+}
+
 async function handlePost(request: Request, SECRET_KEY: string) {
     const corsHeaders = {
-        "Access-Control-Allow-Origin": "http://localhost:3000",
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST,OPTIONS",
         "Access-Control-Max-Age": "86400",
     };
@@ -32,9 +47,8 @@ async function handlePost(request: Request, SECRET_KEY: string) {
             }
         });
     }
-    // The Turnstile token was successfuly validated. Proceed with your application logic.
-    // Validate login, redirect user, etc.
-    // For this demo, we just echo the "/siteverify" response:
+    // The Turnstile token was successfully validated. Proceed with your application logic.
+    //TODO UPON SUCCESSFUL VALIDATION SEND EMAIL USING SENDGRID WORKER
     return new Response(JSON.stringify(outcome),{
         headers: {
             ...corsHeaders
@@ -44,7 +58,7 @@ async function handlePost(request: Request, SECRET_KEY: string) {
 
 async function handleOptions(request: Request) {
     const corsHeaders = {
-        "Access-Control-Allow-Origin": "http://localhost:3000",
+        "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST,OPTIONS",
         "Access-Control-Max-Age": "86400",
     };
