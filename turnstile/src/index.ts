@@ -14,7 +14,7 @@ export interface MessageBody {
 
 async function handleSendgrid(request: MessageBody) {
     const body: MessageBody = request
-    const url = 'https://sendgrid.ashishbhoi.workers.dev'
+    const url = 'https://sendgrid.ashishbhoi.com'
     const message = {
         first_name: body.first_name,
         middle_name: body.middle_name,
