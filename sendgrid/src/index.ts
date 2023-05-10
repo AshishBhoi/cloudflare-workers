@@ -11,11 +11,23 @@ export interface MessageBody {
     message: string
 }
 
-const name = process.env.PILE_MARK
+async function gatherResponse(response: Response) {
+    const {headers} = response;
+    const contentType = headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        return JSON.stringify(await response.json());
+    } else if (contentType.includes("application/text")) {
+        return response.text();
+    } else if (contentType.includes("text/html")) {
+        return response.text();
+    } else {
+        return response.text();
+    }
+}
 
 const handler: ExportedHandler = {
     // @ts-ignore "STUPID ERROR"
-    async fetch(request: Request, env: Env, ctx) {
+    async fetch(request: Request, env: Env) {
 
         const body : MessageBody = JSON.parse(JSON.stringify(await request.json()))
 
@@ -50,20 +62,6 @@ const handler: ExportedHandler = {
             }
         };
 
-        async function gatherResponse(response: Response) {
-            const {headers} = response;
-            const contentType = headers.get("content-type") || "";
-            if (contentType.includes("application/json")) {
-                return JSON.stringify(await response.json());
-            } else if (contentType.includes("application/text")) {
-                return response.text();
-            } else if (contentType.includes("text/html")) {
-                return response.text();
-            } else {
-                return response.text();
-            }
-        }
-
         const init = {
             body: JSON.stringify(message_full),
             method: "POST",
@@ -74,7 +72,12 @@ const handler: ExportedHandler = {
         };
         const response = await fetch(url, init);
         const results = await gatherResponse(response);
-        return new Response(results, init);
+        return new Response(results, {
+            status: response.status,
+            headers: {
+                "content-type": "application/json;charset=UTF-8",
+            }
+        });
     },
 };
 
