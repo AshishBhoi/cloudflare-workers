@@ -3,6 +3,7 @@ export interface Env {
 }
 
 export interface MessageBody {
+    token: string
     first_name: string
     middle_name: string
     last_name: string
@@ -11,10 +12,22 @@ export interface MessageBody {
     message: string
 }
 
-//TODO HANDLE SENDGRID FUNCTION TO SEND AND RECEIVE SENDGRID WORKER DATA
-async function handleSendgrid(request: Request) {
-    const body : MessageBody = JSON.parse(JSON.stringify(await request.json()))
-    return new Response()
+async function handleSendgrid(request: MessageBody) {
+    const body: MessageBody = request
+    const url = 'https://sendgrid.ashishbhoi.workers.dev'
+    const message = {
+        first_name: body.first_name,
+        middle_name: body.middle_name,
+        last_name: body.last_name,
+        message_email: body.message_email,
+        message_subject: body.message_subject,
+        message: body.message
+    }
+    const init = {
+        body: JSON.stringify(message),
+        method: "POST"
+    };
+    return await fetch(url, init);
 }
 
 async function handlePost(request: Request, SECRET_KEY: string) {
@@ -23,7 +36,10 @@ async function handlePost(request: Request, SECRET_KEY: string) {
         "Access-Control-Allow-Methods": "POST,OPTIONS",
         "Access-Control-Max-Age": "86400",
     };
-    const body = JSON.parse(JSON.stringify(await request.json()))
+    const sendgridFailure = {
+        success: false
+    }
+    const body: MessageBody = JSON.parse(JSON.stringify(await request.json()))
     // Turnstile injects a token in "cf-turnstile-response".
     const token = body.token
     const ip = request.headers.get('CF-Connecting-IP');
@@ -41,15 +57,22 @@ async function handlePost(request: Request, SECRET_KEY: string) {
 
     const outcome: any = await result.json();
     if (!outcome.success) {
-        return new Response(JSON.stringify(outcome),{
+        return new Response(JSON.stringify(outcome), {
             headers: {
                 ...corsHeaders
             }
         });
     }
     // The Turnstile token was successfully validated. Proceed with your application logic.
-    //TODO UPON SUCCESSFUL VALIDATION SEND EMAIL USING SENDGRID WORKER
-    return new Response(JSON.stringify(outcome),{
+    const sendgridResult = await handleSendgrid(body)
+    if (sendgridResult.status !== 202) {
+        return new Response(JSON.stringify(sendgridFailure), {
+            headers: {
+                ...corsHeaders
+            }
+        });
+    }
+    return new Response(JSON.stringify(outcome), {
         headers: {
             ...corsHeaders
         }
