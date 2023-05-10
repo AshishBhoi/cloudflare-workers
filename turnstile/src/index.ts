@@ -120,6 +120,11 @@ async function handleOptions(request: Request) {
 const handler: ExportedHandler = {
     // @ts-ignore "STUPID ERROR"
     async fetch(request, env: Env) {
+        const corsHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+            "Access-Control-Max-Age": "86400",
+        };
 
         if (request.method === 'POST') {
             return await handlePost(request, env.NUXT_TURNSTILE_SECRET_KEY);
@@ -128,7 +133,10 @@ const handler: ExportedHandler = {
             return handleOptions(request);
         }
         return new Response(new Blob(), {
-            status: 401, statusText: "Method not allowed"
+            status: 401, statusText: "Method not allowed",
+            headers: {
+                ...corsHeaders
+            }
         })
     },
 };

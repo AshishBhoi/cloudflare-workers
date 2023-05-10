@@ -25,9 +25,51 @@ async function gatherResponse(response: Response) {
     }
 }
 
+async function handleOptions(request: Request) {
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Max-Age": "86400",
+    };
+    if (
+        request.headers.get("Origin") !== null &&
+        request.headers.get("Access-Control-Request-Method") !== null &&
+        request.headers.get("Access-Control-Request-Headers") !== null
+    ) {
+        const headers = request.headers.get("Access-Control-Request-Headers")
+        // Handle CORS preflight requests.
+        if (headers) {
+            return new Response(null, {
+                headers: {
+                    ...corsHeaders,
+                    "Access-Control-Allow-Headers": headers
+                },
+            });
+        }
+        return new Response(null, {
+            headers: {
+                ...corsHeaders,
+                "Access-Control-Allow-Headers": ""
+            },
+        });
+    } else {
+        // Handle standard OPTIONS request.
+        return new Response(null, {
+            headers: {
+                Allow: "POST, OPTIONS",
+            },
+        });
+    }
+}
+
 const handler: ExportedHandler = {
     // @ts-ignore "STUPID ERROR"
     async fetch(request: Request, env: Env) {
+        const corsHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+            "Access-Control-Max-Age": "86400",
+        };
 
         const body : MessageBody = JSON.parse(JSON.stringify(await request.json()))
 
@@ -72,12 +114,25 @@ const handler: ExportedHandler = {
         };
         const response = await fetch(url, init);
         const results = await gatherResponse(response);
-        return new Response(results, {
-            status: response.status,
-            headers: {
-                "content-type": "application/json;charset=UTF-8",
-            }
-        });
+        if (request.method === "POST") {
+            return new Response(results, {
+                status: response.status,
+                headers: {
+                    "content-type": "application/json;charset=UTF-8",
+                    ...corsHeaders
+                }
+            });
+        }
+        else if (request.method === "OPTIONS") {
+            // Handle CORS preflight requests
+            return handleOptions(request);
+        }
+        return new Response(new Blob(), {
+            status: 401, statusText: "Method not allowed",
+             headers: {
+                 ...corsHeaders,
+             }
+        })
     },
 };
 
