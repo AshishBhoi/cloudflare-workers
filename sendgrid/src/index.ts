@@ -11,11 +11,65 @@ export interface MessageBody {
     message: string
 }
 
-const name = process.env.PILE_MARK
+async function gatherResponse(response: Response) {
+    const {headers} = response;
+    const contentType = headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+        return JSON.stringify(await response.json());
+    } else if (contentType.includes("application/text")) {
+        return response.text();
+    } else if (contentType.includes("text/html")) {
+        return response.text();
+    } else {
+        return response.text();
+    }
+}
+
+async function handleOptions(request: Request) {
+    const corsHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST,OPTIONS",
+        "Access-Control-Max-Age": "86400",
+    };
+    if (
+        request.headers.get("Origin") !== null &&
+        request.headers.get("Access-Control-Request-Method") !== null &&
+        request.headers.get("Access-Control-Request-Headers") !== null
+    ) {
+        const headers = request.headers.get("Access-Control-Request-Headers")
+        // Handle CORS preflight requests.
+        if (headers) {
+            return new Response(null, {
+                headers: {
+                    ...corsHeaders,
+                    "Access-Control-Allow-Headers": headers
+                },
+            });
+        }
+        return new Response(null, {
+            headers: {
+                ...corsHeaders,
+                "Access-Control-Allow-Headers": ""
+            },
+        });
+    } else {
+        // Handle standard OPTIONS request.
+        return new Response(null, {
+            headers: {
+                Allow: "POST, OPTIONS",
+            },
+        });
+    }
+}
 
 const handler: ExportedHandler = {
     // @ts-ignore "STUPID ERROR"
-    async fetch(request: Request, env: Env, ctx) {
+    async fetch(request: Request, env: Env) {
+        const corsHeaders = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+            "Access-Control-Max-Age": "86400",
+        };
 
         const body : MessageBody = JSON.parse(JSON.stringify(await request.json()))
 
@@ -50,31 +104,35 @@ const handler: ExportedHandler = {
             }
         };
 
-        async function gatherResponse(response: Response) {
-            const {headers} = response;
-            const contentType = headers.get("content-type") || "";
-            if (contentType.includes("application/json")) {
-                return JSON.stringify(await response.json());
-            } else if (contentType.includes("application/text")) {
-                return response.text();
-            } else if (contentType.includes("text/html")) {
-                return response.text();
-            } else {
-                return response.text();
-            }
-        }
-
-        const init = {
+        const response = await fetch(url, {
             body: JSON.stringify(message_full),
             method: "POST",
             headers: {
                 "content-type": "application/json;charset=UTF-8",
                 "Authorization": "Bearer " + env.SENDGRID_API
             },
-        };
-        const response = await fetch(url, init);
+        });
+
         const results = await gatherResponse(response);
-        return new Response(results, init);
+        if (request.method === "POST") {
+            return new Response(results, {
+                status: response.status,
+                headers: {
+                    "content-type": "application/json;charset=UTF-8",
+                    ...corsHeaders
+                }
+            });
+        }
+        else if (request.method === "OPTIONS") {
+            // Handle CORS preflight requests
+            return handleOptions(request);
+        }
+        return new Response(new Blob(), {
+            status: 401, statusText: "Method not allowed",
+             headers: {
+                 ...corsHeaders,
+             }
+        })
     },
 };
 
