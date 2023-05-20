@@ -104,15 +104,15 @@ const handler: ExportedHandler = {
             }
         };
 
-        const init = {
+        const response = await fetch(url, {
             body: JSON.stringify(message_full),
             method: "POST",
             headers: {
                 "content-type": "application/json;charset=UTF-8",
                 "Authorization": "Bearer " + env.SENDGRID_API
             },
-        };
-        const response = await fetch(url, init);
+        });
+
         const results = await gatherResponse(response);
         if (request.method === "POST") {
             return new Response(results, {

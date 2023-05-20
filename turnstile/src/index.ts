@@ -1,4 +1,4 @@
-export interface Env {
+export interface Environment {
     NUXT_TURNSTILE_SECRET_KEY: string
 }
 
@@ -13,15 +13,14 @@ export interface MessageBody {
 }
 
 async function handleSendgrid(request: MessageBody) {
-    const body: MessageBody = request
     const url = 'https://sendgrid.ashishbhoi.workers.dev'
     const message = {
-        first_name: body.first_name,
-        middle_name: body.middle_name,
-        last_name: body.last_name,
-        message_email: body.message_email,
-        message_subject: body.message_subject,
-        message: body.message
+        first_name: request.first_name,
+        middle_name: request.middle_name,
+        last_name: request.last_name,
+        message_email: request.message_email,
+        message_subject: request.message_subject,
+        message: request.message
     }
     const init = {
         body: JSON.stringify(message),
@@ -30,12 +29,13 @@ async function handleSendgrid(request: MessageBody) {
     return await fetch(url, init);
 }
 
-async function handlePost(request: Request, SECRET_KEY: string) {
+async function handleRequest(request: Request, environment: Environment) {
     const corsHeaders = {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "POST,OPTIONS",
         "Access-Control-Max-Age": "86400",
     };
+
     const sendgridFailure = {
         success: false
     }
@@ -46,7 +46,7 @@ async function handlePost(request: Request, SECRET_KEY: string) {
 
     // Validate the token by calling the "/siteverify" API.
     let formData = new FormData();
-    formData.append('secret', SECRET_KEY);
+    formData.append('secret', environment.NUXT_TURNSTILE_SECRET_KEY);
     formData.append('response', token!);
     formData.append('remoteip', ip!);
 
@@ -119,7 +119,7 @@ async function handleOptions(request: Request) {
 // @ts-ignore
 const handler: ExportedHandler = {
     // @ts-ignore "STUPID ERROR"
-    async fetch(request, env: Env) {
+    async fetch(request, env: Environment) {
         const corsHeaders = {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST,OPTIONS",
@@ -127,7 +127,7 @@ const handler: ExportedHandler = {
         };
 
         if (request.method === 'POST') {
-            return await handlePost(request, env.NUXT_TURNSTILE_SECRET_KEY);
+            return await handleRequest(request, env);
         } else if (request.method === "OPTIONS") {
             // Handle CORS preflight requests
             return handleOptions(request);
